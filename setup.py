@@ -26,7 +26,11 @@ setup(
             'check_openvz_vm_perf = cloud_vm_monitoring.check_openvz:main [consume]',
             'check_openvz_vm_cpu = cloud_vm_monitoring.check_openvz:check_cpu [consume]',
             'check_openvz_vm_mem = cloud_vm_monitoring.check_openvz:check_mem [consume]',
-            'openvz_passpersist = cloud_vm_monitoring.openvz_passpersist:main [publish]'
+            'openvz_passpersist = cloud_vm_monitoring.openvz_passpersist:main [publish]',
+            'check_kvm_vm_perf = cloud_vm_monitoring.check_kvm:main [consume]',
+            'check_kvm_vm_cpu = cloud_vm_monitoring.check_kvm:check_cpu [consume]',
+            'check_kvm_vm_mem = cloud_vm_monitoring.check_kvm:check_mem [consume]',
+            'kvm_passpersist = cloud_vm_monitoring.kvm_passpersist:main [publish]'
         ]
     }
 )
