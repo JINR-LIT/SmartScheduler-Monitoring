@@ -31,7 +31,7 @@ def get_cpu():
     last_vestat = next_vestat
 
 def get_mem(id):
-    lines = sh.vzctl("exec", id, "free", "-k").stdout.split('\n')
+    lines = sh.vzctl("exec", id, "free", "-b").stdout.split('\n')
     free = [re.split(" +", line.strip()) for line in lines]
     if free[1][0] != "Mem:":
         raise Exception("Possible error parsing free data")

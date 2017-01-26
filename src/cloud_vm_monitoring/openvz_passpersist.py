@@ -20,7 +20,7 @@ def update():
             id, uptime, cpu = cpuinfo[i]
             pp.add_int('1.1.{0}.0'.format(i), id)
             pp.add_int('1.1.{0}.1'.format(i), uptime)
-            pp.add_int('1.1.{0}.2'.format(i), int(cpu * 100))
+            pp.add_str('1.1.{0}.2'.format(i), cpu)
             pp.add_int('1.1.{0}.3'.format(i), int(time.time()))
     except Exception as e:
         syslog.syslog(syslog.LOG_ERR, 'SMNP PassPersist OpenVZ CPU: error {0}'.format(e))
@@ -31,9 +31,9 @@ def update():
         for i in range(len(meminfo)):
             id, used, mem, total = meminfo[i]
             pp.add_int('2.1.{0}.0'.format(i), id)
-            pp.add_int('2.1.{0}.1'.format(i), used)
-            pp.add_int('2.1.{0}.2'.format(i), int(mem * 100))
-            pp.add_int('2.1.{0}.3'.format(i), total)
+            pp.add_str('2.1.{0}.1'.format(i), used)
+            pp.add_str('2.1.{0}.2'.format(i), mem)
+            pp.add_str('2.1.{0}.3'.format(i), total)
             pp.add_int('2.1.{0}.4'.format(i), int(time.time()))
     except Exception as e:
         syslog.syslog(syslog.LOG_ERR, 'SMNP PassPersist OpenVZ Memory: error {0}'.format(e))
