@@ -7,21 +7,21 @@ import pynag
 def walk_cpu(session, oid):
     n = int(session.get("{oid}.1.0".format(oid=oid)).value)
     for i in range(n):
-        id, uptime, cpu, timestamp = (x.value for x in session.walk("{oid}.1.1.{i}".format(oid=oid, i=i)))
-        yield (id, Decimal(uptime), Decimal(cpu), timestamp)
+        id, uptime, cpu = (x.value for x in session.walk("{oid}.1.1.{i}".format(oid=oid, i=i)))
+        yield (id, Decimal(uptime), Decimal(cpu))
 
 
 def walk_mem(session, oid):
     n = int(session.get("{oid}.2.0".format(oid=oid)).value)
     for i in range(n):
-        id, used, percent, total, timestamp = (x.value for x in session.walk("{oid}.2.1.{i}".format(oid=oid, i=i)))
-        yield (id, Decimal(used), Decimal(percent), Decimal(total), timestamp)
+        id, used, percent, total = (x.value for x in session.walk("{oid}.2.1.{i}".format(oid=oid, i=i)))
+        yield (id, Decimal(used), Decimal(percent), Decimal(total))
 
 
 def add_cpu(ph, metrics):
     sumcpu = Decimal(0)
     cpucount = 0
-    for id, uptime, percent, timestamp in metrics:
+    for id, uptime, percent in metrics:
         if uptime > 0:
             sumcpu += percent
             cpucount += 1
@@ -37,7 +37,7 @@ def add_mem(ph, metrics):
     summem = Decimal(0)
     memcount = 0
     sumb = 0
-    for id, used, percent, total, timestamp in metrics:
+    for id, used, percent, total in metrics:
         summem += percent
         sumb += used
         memcount += 1
