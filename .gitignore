@@ -2,3 +2,9 @@
 ### gitignore-idea template
 *.pyc
 .idea/
+.cache/
+.eggs/
+build/
+dist/
+env/
+*.egg-info/
