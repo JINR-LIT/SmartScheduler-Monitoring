@@ -23,9 +23,9 @@ setup(
     # include_package_data=True,
     entry_points={
         'console_scripts': [
-            'check_openvz_vm_perf = cloud_vm_monitoring.check_openvz:main [consume]',
+            'check_openvz_vm_perf = cloud_vm_monitoring.check:check_openvz [consume]',
             'openvz_passpersist = cloud_vm_monitoring.passpersist:openvz_passpersist [publish]',
-            'check_kvm_vm_perf = cloud_vm_monitoring.check_kvm:main [consume]',
+            'check_kvm_vm_perf = cloud_vm_monitoring.check:check_kvm [consume]',
             'kvm_passpersist = cloud_vm_monitoring.passpersist:kvm_passpersist [publish]'
         ]
     }

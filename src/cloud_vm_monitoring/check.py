@@ -50,11 +50,11 @@ def add_mem(ph, metrics):
         ph.add_summary("total vm memory used: {sumb} B".format(sumb=sumb))
 
 
-def main():
+def check(default_oid):
     ph = pynag.Plugins.PluginHelper()
     og_snmp = ph.parser.add_option_group("SNMP")
     og_snmp.add_option("-H", "--host", help="Hostname or ip address", dest="host", default="localhost")
-    og_snmp.add_option("--oid", help="oid root for openvz data", dest="oid", default=".1.3.6.1.4.1.8072.1.3.7")
+    og_snmp.add_option("--oid", help="oid root for VM data", dest="oid", default=default_oid)
     og_snmp.add_option("-C", "--community", dest="community", default="public")
     og_snmp.add_option("-V", "--version", dest="version", default=2)
 
@@ -83,5 +83,13 @@ def main():
     ph.exit()
 
 
+def check_openvz():
+    check(".1.3.6.1.4.1.8072.1.3.7")
+
+
+def check_kvm():
+    check(".1.3.6.1.4.1.8072.1.3.8")
+
+
 if __name__ == "__main__":
-    main()
+    check_openvz()
