@@ -6,13 +6,14 @@ import sys
 import syslog
 import time
 
+import psutil
 import snmp_passpersist as snmp
 
 from cloud_vm_monitoring.probe.kvm import get_cpu_info as get_kvm_cpu, get_mem_info as get_kvm_mem
 from cloud_vm_monitoring.probe.openvz import get_cpu_info as get_openvz_cpu, get_mem_info as get_openvz_mem
 
 
-def publish_cpu(pp, cpu_dict):
+def publish_vm_cpu(pp, cpu_dict):
     pp.add_int('1.0', len(cpu_dict))
     ids = sorted(cpu_dict.keys())
     for i in range(len(ids)):
@@ -22,7 +23,7 @@ def publish_cpu(pp, cpu_dict):
         pp.add_str('1.1.{0}.2'.format(i), vm['cpu_percent'])
 
 
-def publish_mem(pp, mem_dict):
+def publish_vm_mem(pp, mem_dict):
     pp.add_int('2.0', len(mem_dict))
     ids = sorted(mem_dict.keys())
     for i in range(len(ids)):
@@ -33,17 +34,37 @@ def publish_mem(pp, mem_dict):
         pp.add_str('2.1.{0}.3'.format(i), vm['mem_total'])
 
 
+def publish_host_cpu(pp, count, percent):
+    pp.add_int('1.2.0', count)
+    pp.add_str('1.2.1', percent)
+
+
+def publish_host_mem(pp, used, percent, total):
+    pp.add_str('2.2.1', used)
+    pp.add_str('2.2.2', percent)
+    pp.add_str('2.2.3', total)
+
+
 def update_factory(pp, cpu_getter, mem_getter):
     def update():
         pp.add_int('0.0.0', int(time.time()))
         try:
-            publish_cpu(pp, cpu_getter())
+            publish_vm_cpu(pp, cpu_getter())
         except Exception as e:
-            syslog.syslog(syslog.LOG_ERR, 'SMNP PassPersist OpenVZ CPU: error {0}'.format(e))
+            syslog.syslog(syslog.LOG_ERR, 'SMNP PassPersist VM CPU: error {0}'.format(e))
         try:
-            publish_mem(pp, mem_getter())
+            publish_vm_mem(pp, mem_getter())
         except Exception as e:
-            syslog.syslog(syslog.LOG_ERR, 'SMNP PassPersist OpenVZ Memory: error {0}'.format(e))
+            syslog.syslog(syslog.LOG_ERR, 'SMNP PassPersist VM Memory: error {0}'.format(e))
+        try:
+            publish_host_cpu(pp, psutil.cpu_count(), psutil.cpu_percent())
+        except Exception as e:
+            syslog.syslog(syslog.LOG_ERR, 'SMNP PassPersist Host CPU: error {0}'.format(e))
+        try:
+            mem = psutil.virtual_memory()
+            publish_host_mem(pp, mem.total - mem.available, mem.percent, mem.total)
+        except Exception as e:
+            syslog.syslog(syslog.LOG_ERR, 'SMNP PassPersist Host Memory: error {0}'.format(e))
     return update
 
 

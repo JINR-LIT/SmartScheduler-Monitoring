@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
 import json
-import sh
 import re
 from decimal import Decimal
 
-from cloud_vm_monitoring.probe.util import make_cpu_dict, merge_info_dicts
+import sh
+
+from cloud_vm_monitoring.probe.util import make_cpu_dict, merge_info_dicts, parse_free, get_mem
 
 
 def read_vestat(vestat_file='/proc/vz/vestat'):
@@ -26,6 +27,11 @@ def parse_vestat(vestat_lines):
     return vestat[1:]
 
 last_vestat = {}
+
+
+def reset_global():
+    global last_vestat
+    last_vestat = {}
 
 
 def get_cpu(vestat):
@@ -51,22 +57,6 @@ def get_cpu_info():
 
 def read_free(id):
     return sh.vzctl("exec", id, "free", "-b").stdout
-
-
-def parse_free(free_output):
-    expected_free = ['total', 'used', 'free', 'shared', 'buffers', 'cached']
-    lines = free_output.split('\n')
-    free = [re.split(" +", line.strip()) for line in lines]
-    if free[0] != expected_free:
-        raise Exception("Unexpected free headers", free[0])
-    if free[1][0] != "Mem:":
-        raise Exception("Unexpected free line header", free[1][0])
-    return free[1][1:3]
-
-
-def get_mem(free):
-    total, used = free
-    return total, used, Decimal(used)/Decimal(total) * 100
 
 
 def get_vm_list():

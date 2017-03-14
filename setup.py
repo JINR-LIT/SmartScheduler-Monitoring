@@ -17,7 +17,7 @@ setup(
     package_dir={'': 'src'},
     install_requires=[],
     extras_require={
-        'publish': ['sh>=1.07', 'snmp_passpersist'],
+        'publish': ['sh>=1.07', 'snmp_passpersist', 'psutil>=2'],
         'consume': ['easysnmp', 'pynag']
     },
     # include_package_data=True,

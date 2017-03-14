@@ -1,5 +1,6 @@
 #!/usr/bin/python2
 from decimal import Decimal
+
 import easysnmp
 import pynag
 
@@ -18,6 +19,18 @@ def walk_mem(session, oid):
         yield (id, Decimal(used), Decimal(percent), Decimal(total))
 
 
+def get_host_cpu(session, oid):
+    count, percent = session.get("{oid}.1.2.0".format(oid=oid)).value, session.get("{oid}.1.2.1".format(oid=oid)).value
+    return count, Decimal(percent)
+
+
+def get_host_mem(session, oid):
+    used, percent, total = session.get("{oid}.2.2.1".format(oid=oid)).value, \
+                           session.get("{oid}.2.2.2".format(oid=oid)).value, \
+                           session.get("{oid}.2.2.3".format(oid=oid)).value
+    return used, Decimal(percent), total
+
+
 def add_cpu(ph, metrics):
     sumcpu = Decimal(0)
     cpucount = 0
@@ -26,11 +39,9 @@ def add_cpu(ph, metrics):
             sumcpu += percent
             cpucount += 1
         ph.add_metric('cpu_{0}'.format(id), percent.quantize(Decimal('.01')),
-                      ph.options.cpu_w, ph.options.cpu_c, uom='%', min=0, max=100)
+                      ph.options.cpu_w, ph.options.cpu_c, uom='%', min=0)
         ph.add_metric('dt_{0}'.format(id), (uptime / Decimal('1000')).quantize(Decimal('.01')),
                       ph.options.dt_w, ph.options.dt_c, uom='s')
-    if cpucount:
-        ph.add_summary("avg vm CPU: {avg}%".format(avg=(sumcpu / cpucount).quantize(Decimal('.01'))))
 
 
 def add_mem(ph, metrics):
@@ -48,6 +59,19 @@ def add_mem(ph, metrics):
     if summem:
         ph.add_summary("avg vm memory: {avg}%".format(avg=(summem / memcount).quantize(Decimal('.01'))))
         ph.add_summary("total vm memory used: {sumb} B".format(sumb=sumb))
+
+
+def add_host_cpu(ph, count, percent):
+    ph.add_metric('host_cpu_count', count)
+    ph.add_metric('host_cpu_load', percent.quantize(Decimal('.01')), min=0, max=100)
+    ph.add_summary("Host CPU: {0}%".format(percent.quantize(Decimal('.01'))))
+
+
+def add_host_mem(ph, used, percent, total):
+    ph.add_metric('host_mem_used_bytes', used, uom='B', min=0, max=total)
+    ph.add_metric('host_mem_used_percent', percent, uom='%', min=0, max=100)
+    ph.add_metric('host_mem_total_bytes', total, uom='B')
+    ph.add_summary("Host Memory: {0}%".format(percent.quantize(Decimal('.01'))))
 
 
 def check(default_oid):
@@ -77,6 +101,9 @@ def check(default_oid):
 
     add_cpu(ph, walk_cpu(session, ph.options.oid))
     add_mem(ph, walk_mem(session, ph.options.oid))
+    add_host_cpu(ph, *get_host_cpu(session, ph.options.oid))
+    add_host_mem(ph, *get_host_mem(session, ph.options.oid))
+
 
     ph.add_metric('timestamp', session.get("{oid}.0.0.0".format(oid=ph.options.oid)).value)
     ph.check_all_metrics()

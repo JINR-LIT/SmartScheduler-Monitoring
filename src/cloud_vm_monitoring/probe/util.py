@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-
+import re
 from collections import defaultdict
+from decimal import Decimal
 
 
 def make_cpu_dict(cpu_list):
@@ -18,3 +19,19 @@ def merge_info_dicts(a, b):
     for k, v in b.iteritems():
         r[k].update(v)
     return r
+
+
+def parse_free(free_output):
+    expected_free = ['total', 'used', 'free']
+    lines = free_output.split('\n')
+    free = [re.split(" +", line.strip()) for line in lines]
+    if free[0][:3] != expected_free:
+        raise Exception("Unexpected free headers", free[0])
+    if free[1][0] != "Mem:":
+        raise Exception("Unexpected free line header", free[1][0])
+    return free[1][1:3]
+
+
+def get_mem(free):
+    total, used = free
+    return total, used, Decimal(used) / Decimal(total) * 100

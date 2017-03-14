@@ -1,13 +1,13 @@
 #!/usr/bin/env python
-import pytest
-
 from StringIO import StringIO
-from functools import partial
 from collections import namedtuple
 from decimal import Decimal
+from functools import partial
+
+import pytest
 from mock import mock_open, patch
 
-from cloud_vm_monitoring.probe.openvz import parse_vestat, get_cpu, get_mem, parse_free, get_mem_info, get_cpu_info, main
+from cloud_vm_monitoring.probe.openvz import parse_vestat, get_cpu, get_mem_info, get_cpu_info, main, reset_global
 
 vestat1 = """\
 Version: 2.2
@@ -42,6 +42,7 @@ def test_parse_vestat():
 def test_get_cpu():
     assert list(get_cpu([['123', '0', '0', '0', '0']])) == []
     assert list(get_cpu([['123', '1', '0', '0', '2']])) == [(123, 2, Decimal(50))]
+    reset_global()
 
 
 def test_cpu_info():
@@ -55,27 +56,13 @@ def test_cpu_info():
             {1562: {'id': 1562, 'uptime_delta': 80459 - 66597, 'cpu_percent': Decimal(0)},
              1563: {'id': 1563, 'uptime_delta': 86405 - 72543,
                     'cpu_percent': (1152 - 345 + 89300 - 76245) * 100 / Decimal(86405 - 72543)}}
-
+    reset_global()
 
 freemem = """\
 total       used       free     shared    buffers     cached
 Mem:    1073741824  497639424  576102400       4096          0  103686144
 -/+ buffers/cache:  393953280  679788544
 Swap:    134217728          0  134217728"""
-
-def test_parse_free():
-    with pytest.raises(Exception):
-        parse_free('asdf')
-    with pytest.raises(Exception):
-        parse_free("""total       used       free     shared    buffers     cached
-notmem:    1073741824  497639424  576102400       4096          0  103686144
--/+ buffers/cache:  393953280  679788544
-Swap:    134217728          0  134217728""")
-    assert parse_free(freemem) == ['1073741824', '497639424']
-
-
-def test_get_mem():
-    assert get_mem(['1000', '100']) == ('1000', '100', Decimal(10))
 
 
 def test_mem_info(mocker):
@@ -115,3 +102,4 @@ def test_main(mocker):
     main()
     assert out.getvalue() == "HOST=example.com STATE=running USEDCPU=80.0 USEDMEMORY=497639424 NAME=1562\n" \
                              "HOST=example.com STATE=running USEDCPU=150.0 USEDMEMORY=497639424 NAME=1563\n"
+    reset_global()
