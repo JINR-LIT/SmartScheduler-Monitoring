@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 import time
 from StringIO import StringIO
-
 import pytest
+import os
+
+from libvirt import libvirtError
 
 from cloud_vm_monitoring.probe.kvm import get_cpu, get_mem, get_mem_info, get_cpu_info, main, reset_global
 
@@ -16,7 +18,14 @@ def test_get_cpu():
     reset_global()
 
 
-def test_cpu_info(mocker):
+def test_get_cpu_fractional():
+    test_dir = os.path.dirname(os.path.realpath(__file__))
+    with pytest.raises(libvirtError) as exc_info:
+        list(get_cpu('test:///{}/libvirt_test_fractional.xml'.format(test_dir)))
+    assert exc_info.value.message == 'XML error: maximum vcpus count must be an integer'
+
+
+def test_cpu_info():
     assert get_cpu_info('test:///default') == {}
     time.sleep(2)
     cpu = get_cpu_info('test:///default')
@@ -30,7 +39,7 @@ def test_get_mem():
     assert list(get_mem('test:///default')) == [('test', 2147483648L, 8589934592L, 25)]
 
 
-def test_mem_info(mocker):
+def test_mem_info():
     assert get_mem_info('test:///default') == {'test': {'id': 'test', 'mem_percent': 25.0, 'mem_total': 8589934592L,
                                                         'mem_used': 2147483648L}}
 

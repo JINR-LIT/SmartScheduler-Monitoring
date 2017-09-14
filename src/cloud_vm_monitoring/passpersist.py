@@ -22,7 +22,7 @@ def publish_vm_cpu(pp, cpu_dict):
         pp.add_int('1.1.{0}.0'.format(i), ids[i])
         pp.add_int('1.1.{0}.1'.format(i), vm['uptime_delta'])
         pp.add_str('1.1.{0}.2'.format(i), vm['cpu_percent'])
-        pp.add_int('1.1.{0}.3'.format(i), vm['alloc_cpu'])
+        pp.add_str('1.1.{0}.3'.format(i), vm['alloc_cpu'])
     pp.add_int('1.2.2', sum(vm['alloc_cpu'] for vm in cpu_dict.values()))
 
 
@@ -48,7 +48,6 @@ def publish_host_mem(pp, used, percent, total):
     pp.add_str('2.2.1', used)
     pp.add_str('2.2.2', percent)
     pp.add_str('2.2.3', total)
-
 
 
 def update_factory(pp, cpu_getter, mem_getter):

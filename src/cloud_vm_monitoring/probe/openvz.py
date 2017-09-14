@@ -26,6 +26,7 @@ def parse_vestat(vestat_lines):
         raise Exception("Unexpected vestat headers", vestat[0])
     return vestat[1:]
 
+
 last_vestat = {}
 
 
@@ -48,7 +49,7 @@ def get_cpu(vestat, vm_list):
                 cpu = (user + nice + system) / Decimal(uptime) * 100
             else:
                 cpu = Decimal(0)
-            acpu = vm_dict.get(id, {}).get('cpulimit', float('NaN')) / 100
+            acpu = vm_dict.get(id, {}).get('cpulimit', float('NaN')) / 100.0
             yield (id, uptime, cpu, acpu)
     last_vestat = next_vestat
 

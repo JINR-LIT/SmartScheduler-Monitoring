@@ -9,7 +9,7 @@ def walk_cpu(session, oid):
     n = int(session.get("{oid}.1.0".format(oid=oid)).value)
     for i in range(n):
         id, uptime, cpu, acpu = (x.value for x in session.walk("{oid}.1.1.{i}".format(oid=oid, i=i)))
-        yield (id, Decimal(uptime), Decimal(cpu), acpu)
+        yield (id, Decimal(uptime), Decimal(cpu), Decimal(acpu))
 
 
 def walk_mem(session, oid):
@@ -21,7 +21,7 @@ def walk_mem(session, oid):
 
 def get_host_cpu(session, oid):
     count, percent, alloccpu = session.get("{oid}.1.2.0".format(oid=oid)).value, session.get("{oid}.1.2.1".format(oid=oid)).value, session.get("{oid}.1.2.2".format(oid=oid)).value
-    return int(count), Decimal(percent), alloccpu
+    return int(count), Decimal(percent), Decimal(alloccpu)
 
 
 def get_host_mem(session, oid):
@@ -44,7 +44,7 @@ def add_cpu(ph, metrics):
                       ph.options.cpu_w, ph.options.cpu_c, uom='%', min=0)
         ph.add_metric('dt_{0}'.format(id), (uptime / Decimal('1000')).quantize(Decimal('.01')),
                       ph.options.dt_w, ph.options.dt_c, uom='s')
-        ph.add_metric('num_cpu_{0}'.format(id), acpu)
+        ph.add_metric('num_cpu_{0}'.format(id), acpu.quantize(Decimal('.01')))
 
 
 def add_mem(ph, metrics):
@@ -69,7 +69,7 @@ def add_host_cpu(ph, count, percent, alloccpu):
     ph.add_metric('host_cpu_count', count)
     ph.add_metric('host_cpu_load', percent.quantize(Decimal('.01')), min=0, max=100)
     ph.add_metric('host_cpu_load_cores', (percent * count).quantize(Decimal('.01')), min=0, max=count * 100)
-    ph.add_metric('host_cpu_alloc', alloccpu)
+    ph.add_metric('host_cpu_alloc', alloccpu.quantize(Decimal('.01')))
     ph.add_summary("Host CPU: {0}%".format(percent.quantize(Decimal('.01'))))
 
 
