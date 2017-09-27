@@ -40,21 +40,24 @@ def test_parse_vestat():
 
 
 def test_get_cpu():
-    assert list(get_cpu([['123', '0', '0', '0', '0']])) == []
-    assert list(get_cpu([['123', '1', '0', '0', '2']])) == [(123, 2, Decimal(50))]
+    assert list(get_cpu([['123', '0', '0', '0', '0']], [{'ctid': 123, 'cpulimit': 100}])) == []
+    assert list(get_cpu([['123', '1', '0', '0', '2']], [{'ctid': 123, 'cpulimit': 100}])) == [(123, 2, Decimal(50), 1)]
     reset_global()
 
 
-def test_cpu_info():
+def test_cpu_info(mocker):
+    mocker.patch('sh.vzlist', create=True,
+                 return_value=namedtuple('sh_stub', ['stdout'])(
+                     stdout='[{"ctid": 1562, "cpulimit": 200},{"ctid": 1563, "cpulimit": 100}]'))
     with patch("__builtin__.open", mock_open(read_data=vestat1)):
         assert get_cpu_info() == {}
     with patch("__builtin__.open", mock_open(read_data=vestat1)):
-        assert get_cpu_info() == {1562: {'id': 1562, 'uptime_delta': 0, 'cpu_percent': 0},
-                                  1563: {'id': 1563, 'uptime_delta': 0, 'cpu_percent': 0}}
+        assert get_cpu_info() == {1562: {'id': 1562, 'uptime_delta': 0, 'cpu_percent': Decimal(0), 'alloc_cpu': 2},
+                                  1563: {'id': 1563, 'uptime_delta': 0, 'cpu_percent': Decimal(0), 'alloc_cpu': 1}}
     with patch("__builtin__.open", mock_open(read_data=vestat2)):
         assert get_cpu_info() == \
-            {1562: {'id': 1562, 'uptime_delta': 80459 - 66597, 'cpu_percent': Decimal(0)},
-             1563: {'id': 1563, 'uptime_delta': 86405 - 72543,
+               {1562: {'id': 1562, 'uptime_delta': 80459 - 66597, 'cpu_percent': Decimal(0), 'alloc_cpu': 2},
+                1563: {'id': 1563, 'uptime_delta': 86405 - 72543, 'alloc_cpu': 1,
                     'cpu_percent': (1152 - 345 + 89300 - 76245) * 100 / Decimal(86405 - 72543)}}
     reset_global()
 

@@ -8,8 +8,8 @@ import pynag
 def walk_cpu(session, oid):
     n = int(session.get("{oid}.1.0".format(oid=oid)).value)
     for i in range(n):
-        id, uptime, cpu = (x.value for x in session.walk("{oid}.1.1.{i}".format(oid=oid, i=i)))
-        yield (id, Decimal(uptime), Decimal(cpu))
+        id, uptime, cpu, acpu = (x.value for x in session.walk("{oid}.1.1.{i}".format(oid=oid, i=i)))
+        yield (id, Decimal(uptime), Decimal(cpu), acpu)
 
 
 def walk_mem(session, oid):
@@ -20,21 +20,23 @@ def walk_mem(session, oid):
 
 
 def get_host_cpu(session, oid):
-    count, percent = session.get("{oid}.1.2.0".format(oid=oid)).value, session.get("{oid}.1.2.1".format(oid=oid)).value
-    return count, Decimal(percent)
+    count, percent, alloccpu = session.get("{oid}.1.2.0".format(oid=oid)).value, session.get("{oid}.1.2.1".format(oid=oid)).value, session.get("{oid}.1.2.2".format(oid=oid)).value
+    return int(count), Decimal(percent), alloccpu
 
 
 def get_host_mem(session, oid):
-    used, percent, total = session.get("{oid}.2.2.1".format(oid=oid)).value, \
-                           session.get("{oid}.2.2.2".format(oid=oid)).value, \
-                           session.get("{oid}.2.2.3".format(oid=oid)).value
-    return used, Decimal(percent), total
+    used = session.get("{oid}.2.2.1".format(oid=oid)).value
+    percent = session.get("{oid}.2.2.2".format(oid=oid)).value
+    total = session.get("{oid}.2.2.3".format(oid=oid)).value
+    allocmem = session.get("{oid}.2.2.4".format(oid=oid)).value
+    sum_used = session.get("{oid}.2.2.5".format(oid=oid)).value
+    return used, Decimal(percent), total, allocmem, sum_used
 
 
 def add_cpu(ph, metrics):
     sumcpu = Decimal(0)
     cpucount = 0
-    for id, uptime, percent in metrics:
+    for id, uptime, percent, acpu in metrics:
         if uptime > 0:
             sumcpu += percent
             cpucount += 1
@@ -42,6 +44,7 @@ def add_cpu(ph, metrics):
                       ph.options.cpu_w, ph.options.cpu_c, uom='%', min=0)
         ph.add_metric('dt_{0}'.format(id), (uptime / Decimal('1000')).quantize(Decimal('.01')),
                       ph.options.dt_w, ph.options.dt_c, uom='s')
+        ph.add_metric('num_cpu_{0}'.format(id), acpu)
 
 
 def add_mem(ph, metrics):
@@ -56,25 +59,29 @@ def add_mem(ph, metrics):
                       ph.options.mem_w, ph.options.mem_c, uom='%', min=0, max=100)
         ph.add_metric('mem_b_{0}'.format(id), used,
                       ph.options.b_w, ph.options.b_c, uom='B', min=0, max=total)
+        ph.add_metric('mem_total_{0}'.format(id), total, uom='B')
     if summem:
         ph.add_summary("avg vm memory: {avg}%".format(avg=(summem / memcount).quantize(Decimal('.01'))))
         ph.add_summary("total vm memory used: {sumb} B".format(sumb=sumb))
 
 
-def add_host_cpu(ph, count, percent):
+def add_host_cpu(ph, count, percent, alloccpu):
     ph.add_metric('host_cpu_count', count)
     ph.add_metric('host_cpu_load', percent.quantize(Decimal('.01')), min=0, max=100)
+    ph.add_metric('host_cpu_load_cores', (percent * count).quantize(Decimal('.01')), min=0, max=count * 100)
+    ph.add_metric('host_cpu_alloc', alloccpu)
     ph.add_summary("Host CPU: {0}%".format(percent.quantize(Decimal('.01'))))
 
 
-def add_host_mem(ph, used, percent, total):
+def add_host_mem(ph, used, percent, total, allocmem, sum_used):
     ph.add_metric('host_mem_used_bytes', used, uom='B', min=0, max=total)
     ph.add_metric('host_mem_used_percent', percent, uom='%', min=0, max=100)
     ph.add_metric('host_mem_total_bytes', total, uom='B')
+    ph.add_metric('host_mem_alloc_bytes', allocmem, uom='B')
+    ph.add_metric('host_mem_sum_vm_used_bytes', sum_used, uom='B')
     ph.add_summary("Host Memory: {0}%".format(percent.quantize(Decimal('.01'))))
 
-
-def check(default_oid):
+def check(default_oid, mem_crit="", mem_warn=""):
     ph = pynag.Plugins.PluginHelper()
     og_snmp = ph.parser.add_option_group("SNMP")
     og_snmp.add_option("-H", "--host", help="Hostname or ip address", dest="host", default="localhost")
@@ -90,8 +97,8 @@ def check(default_oid):
     og_cpu.add_option("--cpu-dt-warn", dest='dt_w', default="")
 
     og_mem = ph.parser.add_option_group("Memory")
-    og_mem.add_option("--mem-crit", help="used memory in %", dest='mem_c', default=":99")
-    og_mem.add_option("--mem-warn", dest='mem_w', default=":95")
+    og_mem.add_option("--mem-crit", help="used memory in %", dest='mem_c', default=mem_crit)
+    og_mem.add_option("--mem-warn", dest='mem_w', default=mem_warn)
     og_mem.add_option("--mem-b-crit", help="used memory in bytes", dest='b_c', default='')
     og_mem.add_option("--mem-b-warn", dest='b_w', default='')
 
@@ -111,7 +118,7 @@ def check(default_oid):
 
 
 def check_openvz():
-    check(".1.3.6.1.4.1.8072.1.3.7")
+    check(".1.3.6.1.4.1.8072.1.3.7", mem_crit=":99", mem_warn=":95")
 
 
 def check_kvm():

@@ -34,12 +34,13 @@ def reset_global():
     last_vestat = {}
 
 
-def get_cpu(vestat):
+def get_cpu(vestat, vm_list):
     global last_vestat
     next_vestat = {}
+    vm_dict = dict([(vm['ctid'], vm) for vm in vm_list])
     for row in vestat:
-        id = int(row[0])
-        next_vestat[id] = row[1:]
+        id = int(row[0])        
+        next_vestat[id] = row[1:] 
         if id in last_vestat:
             diff = [int(row[i])-int(last_vestat[id][i-1]) for i in range(1, len(row))]
             user, nice, system, uptime = diff[:4]
@@ -47,12 +48,13 @@ def get_cpu(vestat):
                 cpu = (user + nice + system) / Decimal(uptime) * 100
             else:
                 cpu = Decimal(0)
-            yield (id, uptime, cpu)
+            acpu = vm_dict.get(id, {}).get('cpulimit', float('NaN')) / 100
+            yield (id, uptime, cpu, acpu)
     last_vestat = next_vestat
 
 
 def get_cpu_info():
-    return make_cpu_dict(get_cpu(parse_vestat(read_vestat())))
+    return make_cpu_dict(get_cpu(parse_vestat(read_vestat()), get_vm_list()))
 
 
 def read_free(id):

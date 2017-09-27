@@ -1,56 +1,80 @@
 #!/usr/bin/env python
 
-import sh
-import re
-from decimal import Decimal
+import time
+
+import libvirt
 
 from cloud_vm_monitoring.probe.util import make_cpu_dict, make_mem_dict, merge_info_dicts
 
-expected_header = ['ID', 'CPU', 'MEM', 'TOTAL', 'UPTIME']
+previous = {}
 
 
-def get_cpu(kvm_pseudo_vestat):
-    lines = kvm_pseudo_vestat.split('\n')
-    vestat = [re.split(" +", line.strip()) for line in lines][:-1]
-    if vestat[0] != expected_header:
-        raise Exception("Unexpected kvm data header")
-    for row in vestat[1:]:
-        id = int(row[0])
-        uptime = row[4]
-        cpu = Decimal(row[1]) * 100
-        yield (id, uptime, cpu)
+# clean up between unittests
+def reset_global():
+    global previous
+    previous = {}
 
 
-def get_cpu_info():
-    return make_cpu_dict(get_cpu(sh.sh("/opt/openvz-snmp-extend/src/cloud_vm_monitoring/probe_kvm").stdout))
+def get_cpu(uri="qemu:///system"):
+    global previous
+    conn = libvirt.openReadOnly(uri)
+    domains = conn.listDomainsID()
+    last_time, record = previous.get(uri, (0, {}))
+    now, new_record = time.time(), {}
+    interval = now - last_time
+    for id in domains:
+        domain = conn.lookupByID(id)
+        state, max_memory, memory, nb_virt_cpu, cpu_time = domain.info()
+        new_record[id] = cpu_time
+        if id in record:
+            last_cpu_time = record[id]
+            usage = cpu_time - last_cpu_time
+            if usage > 0 and interval > 0:
+                load = usage * 1e-9 / interval * 100
+            else:
+                load = 0
+            vm_id = domain.name()
+            vm_id = vm_id[4:] if vm_id.startswith('one-') else vm_id
+            yield vm_id, interval, load, nb_virt_cpu
+    previous[uri] = (now, new_record)
 
 
-def get_mem(kvm_pseudo_vestat):
-    lines = kvm_pseudo_vestat.split('\n')
-    vestat = [re.split(" +", line.strip()) for line in lines][:-1]
-    if vestat[0] != expected_header:
-        raise Exception("Unexpected kvm data header")
-    for row in vestat[1:]:
-        id = int(row[0])
-        total = row[3]
-        used = row[2]
-        mem = Decimal(used)/Decimal(total) * 100
-        yield (id, used, total, mem)
+def get_cpu_info(uri="qemu:///system"):
+    return make_cpu_dict(get_cpu(uri))
 
 
-def get_mem_info():
-    return make_mem_dict(get_mem(sh.sh("/opt/openvz-snmp-extend/src/cloud_vm_monitoring/probe_kvm").stdout))
+def get_mem(uri="qemu:///system"):
+    conn = libvirt.openReadOnly(uri)
+    domains = conn.listDomainsID()
+    for id in domains:
+        domain = conn.lookupByID(id)
+        state, max_memory, memory, nb_virt_cpu, cpu_time = domain.info()
+        vm_id = domain.name()
+        vm_id = vm_id[4:] if vm_id.startswith('one-') else vm_id
+        yield vm_id, memory * 1024, max_memory * 1024, memory * 100.0 / max_memory
 
 
-def main():
+def get_mem_info(uri="qemu:///system"):
+    return make_mem_dict(get_mem(uri))
+
+
+def main(uri="qemu:///system"):
     from socket import gethostname
     hostname = gethostname()
-    vm_dict = merge_info_dicts(get_cpu_info(), get_mem_info())
+    get_cpu_info(uri)
+    time.sleep(2)
+    vm_dict = merge_info_dicts(get_cpu_info(uri), get_mem_info(uri))
     for id, vm in vm_dict.items():
         cpu = vm.get('cpu_percent')
         mem = vm.get('mem_used')
-        print "HOST={0} USEDCPU={1} USEDMEMORY={2} NAME={3}".format(
+        print "HOST={0} USEDCPU={1:.1f} USEDMEMORY={2} NAME={3}".format(
             hostname, cpu, mem, id)
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    if len(sys.argv) > 1:
+        uri = sys.argv[1]
+    else:
+        uri = "qemu:///system"
+    main(uri)

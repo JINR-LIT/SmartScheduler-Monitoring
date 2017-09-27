@@ -7,9 +7,9 @@ from cloud_vm_monitoring.probe.util import make_mem_dict, make_cpu_dict, merge_i
 
 
 def test_make_cpu_dict():
-    assert make_cpu_dict([(123, 2, 50), (124, 4, 20)]) == \
-           {123: {'id': 123, 'uptime_delta': 2, 'cpu_percent': 50},
-            124: {'id': 124, 'uptime_delta': 4, 'cpu_percent': 20}}
+    assert make_cpu_dict([(123, 2, 50, 1), (124, 4, 20, 2)]) == \
+           {123: {'id': 123, 'uptime_delta': 2, 'cpu_percent': 50, 'alloc_cpu': 1},
+            124: {'id': 124, 'uptime_delta': 4, 'cpu_percent': 20, 'alloc_cpu': 2}}
 
 
 def test_make_mem_dict():

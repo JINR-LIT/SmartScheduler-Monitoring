@@ -1,7 +1,8 @@
 from itertools import imap
+from pprint import pprint
 
 from influxdb import InfluxDBClient
-from pprint import pprint
+
 
 def delete_kb():
     client = InfluxDBClient("vm166.jinr.ru", database="icinga2")

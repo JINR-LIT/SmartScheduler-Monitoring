@@ -5,8 +5,9 @@ from decimal import Decimal
 
 
 def make_cpu_dict(cpu_list):
-    return dict((id, {'id': id, 'uptime_delta': uptime, 'cpu_percent': cpu}) for id, uptime, cpu in
-                cpu_list)
+    return dict(
+        (id, {'id': id, 'uptime_delta': uptime, 'cpu_percent': cpu, 'alloc_cpu': acpu}) for id, uptime, cpu, acpu in
+        cpu_list)
 
 
 def make_mem_dict(mem_list):
@@ -34,4 +35,4 @@ def parse_free(free_output):
 
 def get_mem(free):
     total, used = free
-    return total, used, Decimal(used) / Decimal(total) * 100
+    return total, used, Decimal(used) * 100 / Decimal(total)

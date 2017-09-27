@@ -5,6 +5,7 @@ import os
 import sys
 import syslog
 import time
+from decimal import Decimal
 
 import psutil
 import snmp_passpersist as snmp
@@ -21,6 +22,8 @@ def publish_vm_cpu(pp, cpu_dict):
         pp.add_int('1.1.{0}.0'.format(i), ids[i])
         pp.add_int('1.1.{0}.1'.format(i), vm['uptime_delta'])
         pp.add_str('1.1.{0}.2'.format(i), vm['cpu_percent'])
+        pp.add_int('1.1.{0}.3'.format(i), vm['alloc_cpu'])
+    pp.add_int('1.2.2', sum(vm['alloc_cpu'] for vm in cpu_dict.values()))
 
 
 def publish_vm_mem(pp, mem_dict):
@@ -32,6 +35,8 @@ def publish_vm_mem(pp, mem_dict):
         pp.add_str('2.1.{0}.1'.format(i), vm['mem_used'])
         pp.add_str('2.1.{0}.2'.format(i), vm['mem_percent'])
         pp.add_str('2.1.{0}.3'.format(i), vm['mem_total'])
+    pp.add_str('2.2.4', sum(Decimal(vm['mem_total']) for vm in mem_dict.values()))
+    pp.add_str('2.2.5', sum(Decimal(vm['mem_used']) for vm in mem_dict.values()))
 
 
 def publish_host_cpu(pp, count, percent):
@@ -43,6 +48,7 @@ def publish_host_mem(pp, used, percent, total):
     pp.add_str('2.2.1', used)
     pp.add_str('2.2.2', percent)
     pp.add_str('2.2.3', total)
+
 
 
 def update_factory(pp, cpu_getter, mem_getter):
@@ -124,4 +130,3 @@ def openvz_passpersist():
 
 def kvm_passpersist():
     passpersist('.1.3.6.1.4.1.8072.1.3.8', get_kvm_cpu, get_kvm_mem)
-
